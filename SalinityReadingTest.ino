@@ -48,16 +48,16 @@ void loop() {
       LCDSerial.write("ON ");
       digitalWrite(solDI_pin, HIGH); 
       DIOpenTime = (massInTank*((G*(setpoint-salinityReading))/((1-F)*(0-salinityReading))))/DI_flowrate;
-      //Serial.print(setpoint,4); Serial.print(" ");
-      //Serial.print(salinityReading,4); Serial.print(" ");
-      //Serial.println(DIOpenTime);    
+      Serial.print(setpoint,4); Serial.print(" ");
+      Serial.print(salinityReading,4); Serial.print(" ");
+      Serial.println(DIOpenTime);    
       last_salinity_update = millis();
     }
     if ( salinityReading<LCL ) {
       LCDSerial.write(254);
       LCDSerial.write(213);
       LCDSerial.write("ON ");
-      saltOpenTime = (massInTank*((G*(setpoint-salinityReading))/((1-F)*(0.001-salinityReading))))/DI_flowrate;
+      saltOpenTime = (massInTank*((G*(setpoint-salinityReading))/((1-F)*(1-salinityReading))))/DI_flowrate;
       Serial.print(setpoint,4); Serial.print(" ");
       Serial.print(salinityReading,4); Serial.print(" ");
       Serial.println(saltOpenTime);       
@@ -110,7 +110,7 @@ void LCDUpdate() {
   LCDSerial.write("  LCL  SetPt    UCL");
   LCDSerial.write(254);
   LCDSerial.write(148);
-  LCDSerial.write("Salty   Current   DI"); 
+  LCDSerial.write("Salty  Salinity   DI"); 
   dtostrf(salinityReading,6,4,salinitystring);
   dtostrf(setpoint,6,4,setpointstring);
   dtostrf(LCL,6,4,LCLstring);
