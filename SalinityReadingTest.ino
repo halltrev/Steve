@@ -57,6 +57,10 @@ void loop() {
       LCDSerial.write(254);
       LCDSerial.write(213);
       LCDSerial.write("ON ");
+      saltOpenTime = (massInTank*((G*(setpoint-salinityReading))/((1-F)*(0.001-salinityReading))))/DI_flowrate;
+      Serial.print(setpoint,4); Serial.print(" ");
+      Serial.print(salinityReading,4); Serial.print(" ");
+      Serial.println(saltOpenTime);       
       last_salinity_update = millis();
     }
   }
@@ -69,7 +73,7 @@ int sensor_reading( int power_pin, int input_pin ) {
   reading = analogRead (input_pin ); // Read voltage
   digitalWrite (power_pin, LOW ); // Turn off the sensor
   delay(100); // Wait to settle
-  Serial.print(reading); Serial.print(" ");
+  //Serial.print(reading); Serial.print(" ");
   return reading;
 }
 
@@ -86,7 +90,7 @@ float salinity_value(int reading) {
  } else {
  // do something to be safe
  }
- Serial.println(salinity);
+ //Serial.println(salinity);
  return(salinity);
 }
 
