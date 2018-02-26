@@ -2,40 +2,64 @@
 
 // Attach the serial display's RX line to digital pin 2
 SoftwareSerial LCDSerial(3,2); // pin 2 = TX, pin 3 = RX (unused)
-char salinitystring[20]; // create string array
-int salinity_power_pin = 6; // Digital I/O pin, Global variable
-//int readings[] = {-7,0,22,145,569,570,646,690,1023};
-int solDI_pin = 9;
-int solSalt_pin = 10;
-int salinity_input_pin = A1; // Analog input pin
+char salinitystring[20];
+char setpointstring[20];
+char LCLstring[20];
+char UCLstring[20];
+int salinity_power_pin = 7;
+int solDI_pin = 10;
+int solSalt_pin = 9;
+int salinity_input_pin = A4;
+int setpointPotPin = A0;
+int setpointReading;
+float sigma = 5.798;
+float setpoint;
+float LCL;
+float UCL;
 float salinityReading;
+float F = 0.15;
+float G = 0.80;
+float massInTank = 106.0;
+float salt_flowrate = 6.8;
+float DI_flowrate = 6.6;
+float deadtime = 6.0;
+unsigned long last_salinity_update;
+float DIOpenTime;
+float saltOpenTime; 
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
   LCDSerial.begin(9600);
-  delay(500);
-  clearScreen();
-  LCDSerial.write(254);
-  LCDSerial.write(128);
-  LCDSerial.write("Salinity:            ");
+  delay(500); 
   pinMode(solDI_pin, OUTPUT);
   pinMode(solSalt_pin, OUTPUT);
   pinMode (salinity_power_pin, OUTPUT);
-  //for(int i = 0; i < 9; i++) {
-    //Serial.println(salinity_value(readings[i]),9);  
-  //}
+  last_salinity_update = millis();
 }
 
 void loop() {
-salinityReading = salinity_value(sensor_reading( salinity_power_pin, salinity_input_pin ));
-Serial.println (salinityReading,9);
-dtostrf(salinityReading,11,9,salinitystring);
-//sprintf(salinitystring,"%4d",salinityReading); // create strings from the numbers
-LCDSerial.write(254); // cursor to 7th position on first line
-LCDSerial.write(137);
-LCDSerial.write(salinitystring);
-
+  setDeadband();
+  salinityReading = salinity_value(sensor_reading( salinity_power_pin, salinity_input_pin ));
+  LCDUpdate();
+  if (millis()-last_salinity_update > deadtime) {
+    if ( salinityReading>UCL ) {
+      LCDSerial.write(254);
+      LCDSerial.write(229);
+      LCDSerial.write("ON ");
+      digitalWrite(solDI_pin, HIGH); 
+      DIOpenTime = (massInTank*((G*(setpoint-salinityReading))/((1-F)*(0-salinityReading))))/DI_flowrate;
+      //Serial.print(setpoint,4); Serial.print(" ");
+      //Serial.print(salinityReading,4); Serial.print(" ");
+      //Serial.println(DIOpenTime);    
+      last_salinity_update = millis();
+    }
+    if ( salinityReading<LCL ) {
+      LCDSerial.write(254);
+      LCDSerial.write(213);
+      LCDSerial.write("ON ");
+      last_salinity_update = millis();
+    }
+  }
 }
 
 int sensor_reading( int power_pin, int input_pin ) {
@@ -43,9 +67,9 @@ int sensor_reading( int power_pin, int input_pin ) {
   digitalWrite (power_pin, HIGH ); // Turn on the sensor
   delay(100); // Wait to settle
   reading = analogRead (input_pin ); // Read voltage
-  Serial.print(reading); Serial.print(" ");
   digitalWrite (power_pin, LOW ); // Turn off the sensor
   delay(100); // Wait to settle
+  Serial.print(reading); Serial.print(" ");
   return reading;
 }
 
@@ -62,7 +86,49 @@ float salinity_value(int reading) {
  } else {
  // do something to be safe
  }
+ Serial.println(salinity);
  return(salinity);
+}
+
+void setDeadband() {
+  setpointReading = analogRead(setpointPotPin);
+  setpointReading = constrain(setpointReading, 5, 987);
+  setpointReading = map(setpointReading, 5, 987, 570, 646);
+  setpoint = salinity_value(setpointReading);
+  LCL = salinity_value(setpointReading-(sigma*3));
+  UCL = salinity_value(setpointReading+(sigma*3));
+}
+
+void LCDUpdate() {
+  clearScreen();
+  LCDSerial.write(254);
+  LCDSerial.write(128);
+  LCDSerial.write("  LCL  SetPt    UCL");
+  LCDSerial.write(254);
+  LCDSerial.write(148);
+  LCDSerial.write("Salty   Current   DI"); 
+  dtostrf(salinityReading,6,4,salinitystring);
+  dtostrf(setpoint,6,4,setpointstring);
+  dtostrf(LCL,6,4,LCLstring);
+  dtostrf(UCL,6,4,UCLstring);      
+  LCDSerial.write(254);
+  LCDSerial.write(220);
+  LCDSerial.write(salinitystring);
+  LCDSerial.write(254);
+  LCDSerial.write(199);
+  LCDSerial.write(setpointstring);
+  LCDSerial.write(254);
+  LCDSerial.write(192);
+  LCDSerial.write(LCLstring);
+  LCDSerial.write(254);
+  LCDSerial.write(206);
+  LCDSerial.write(UCLstring);
+  LCDSerial.write(254);
+  LCDSerial.write(213);
+  LCDSerial.write("OFF");
+  LCDSerial.write(254);
+  LCDSerial.write(229);
+  LCDSerial.write("OFF");
 }
 
  void clearScreen()
